@@ -1,0 +1,147 @@
+---
+title: "Correlation entre pollution atmosphérique et mortalité"
+author: "Hana Sebia"
+date: "11/06/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r,warning=FALSE,include=FALSE}
+library(tidyverse)
+library(mgcv)
+```
+
+```{r, include=FALSE}
+data_corr_mens <- read.csv2("../../data/donnees_pollution_mortalite_mensuelles.csv")
+data_corr_quot <- read.csv2("../../data/donnees_pollution_mortalite_quotidiennes.csv")
+```
+
+
+## Corrélation mensuelles
+
+* **Matières particulaires grossières (PM10)**  
+
+```{r}
+data_corr_mens$pm10 <- as.numeric(as.character(data_corr_mens$pm10))
+gam_mod_mens <- gam(nb_deces ~ s(pm10), data = data_corr_mens, method = "REML")
+summary(gam_mod_mens)
+gam.check(gam_mod_mens)
+plot(gam_mod_mens, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_mens)[1], residuals = TRUE)
+```
+
+* **Matières particulaires fines (PM2.5)**  
+
+```{r}
+data_corr_mens$pm25 <- as.numeric(as.character(data_corr_mens$pm25))
+gam_mod_mens <- gam(nb_deces ~ s(pm25), data = data_corr_mens, method = "REML")
+summary(gam_mod_mens)
+gam.check(gam_mod_mens)
+plot(gam_mod_mens, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_mens)[1], residuals = TRUE)
+```
+
+
+* **Monoxyde d’azote (NO)**  
+
+```{r}
+data_corr_mens$no <- as.numeric(as.character(data_corr_mens$no))
+gam_mod_mens <- gam(nb_deces ~ s(no), data = data_corr_mens, method = "REML")
+summary(gam_mod_mens)
+gam.check(gam_mod_mens)
+plot(gam_mod_mens, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_mens)[1], residuals = TRUE)
+```
+
+* **Dioxyde d’azote (NO2)**  
+
+
+```{r}
+data_corr_mens$no2 <- as.numeric(as.character(data_corr_mens$no2))
+gam_mod_mens <- gam(nb_deces ~ s(no2), data = data_corr_mens, method = "REML")
+summary(gam_mod_mens)
+gam.check(gam_mod_mens)
+plot(gam_mod_mens, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_mens)[1], residuals = TRUE)
+```
+```{r}
+glm_mod_mens <- glm(nb_deces ~ no2, data=data_corr_mens, family=quasipoisson)
+summary(glm_mod_mens)
+```
+
+* **Ozone (O3)**  
+
+```{r}
+data_corr_mens$o3 <- as.numeric(as.character(data_corr_mens$o3))
+gam_mod_mens <- gam(nb_deces ~ s(o3), data = data_corr_mens, method = "REML")
+summary(gam_mod_mens)
+gam.check(gam_mod_mens)
+plot(gam_mod_mens, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_mens)[1], residuals = TRUE)
+```
+
+
+
+
+## Corrélation quotidienne
+
+* **Matières particulaires grossières (PM10)**  
+
+```{r}
+data_corr_quot$pm10 <- as.numeric(as.character(data_corr_quot$pm10))
+gam_mod_quot <- gam(nb_deces ~ s(pm10), data = data_corr_quot, method = "REML")
+summary(gam_mod_quot)
+gam.check(gam_mod_quot)
+plot(gam_mod_quot, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_quot)[1], residuals = TRUE)
+```
+
+```{r}
+glm_mod_quot <- glm(nb_deces ~ pm10, data=data_corr_quot, family=quasipoisson)
+summary(glm_mod_quot)
+```
+
+* **Matières particulaires fines (PM2.5)**  
+
+```{r}
+data_corr_quot$pm25 <- as.numeric(as.character(data_corr_quot$pm25))
+gam_mod_quot <- gam(nb_deces ~ s(pm25), data = data_corr_quot, method = "REML")
+summary(gam_mod_quot)
+gam.check(gam_mod_quot)
+plot(gam_mod_quot, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_quot)[1], residuals = TRUE)
+```
+
+```{r}
+glm_mod_quot <- glm(nb_deces ~ pm25, data=data_corr_quot, family=quasipoisson)
+summary(glm_mod_quot)
+```
+
+* **Monoxyde d’azote (NO)**  
+
+```{r}
+data_corr_quot$no <- as.numeric(as.character(data_corr_quot$no))
+gam_mod_quot <- gam(nb_deces ~ s(no), data = data_corr_quot, method = "REML")
+summary(gam_mod_quot)
+gam.check(gam_mod_quot)
+plot(gam_mod_quot, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_quot)[1], residuals = TRUE)
+```
+
+* **Dioxyde d’azote (NO2)**  
+
+
+```{r}
+data_corr_quot$no2 <- as.numeric(as.character(data_corr_quot$no2))
+gam_mod_quot <- gam(nb_deces ~ s(no2), data = data_corr_quot, method = "REML")
+summary(gam_mod_quot)
+gam.check(gam_mod_quot)
+plot(gam_mod_quot, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_quot)[1], residuals = TRUE)
+```
+
+* **Ozone (O3)**  
+
+```{r}
+data_corr_quot$o3 <- as.numeric(as.character(data_corr_quot$o3))
+gam_mod_quot <- gam(nb_deces ~ s(o3), data = data_corr_quot, method = "REML")
+summary(gam_mod_quot)
+gam.check(gam_mod_quot)
+plot(gam_mod_quot, shade = TRUE, shade.col = "lightblue", seWithMean = TRUE, shift=coef(gam_mod_quot)[1], residuals = TRUE)
+```
+

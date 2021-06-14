@@ -1,0 +1,116 @@
+---
+title: "Visualisation des données de pollution de la métropole de Lyon"
+author: "Hana Sebia"
+date: "14/04/2021"
+output:
+  html_document: default
+  pdf_document: 
+  latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+```{r, include=FALSE}
+pm10 <- read.csv2("../../data/pollution/mesures/stats/pm10_stats.csv")
+pm25 <- read.csv2("../../data/pollution/mesures/stats/pm2,5_stats.csv")
+no2 <- read.csv2("../../data/pollution/mesures/stats/no2_stats.csv")
+o3 <- read.csv2("../../data/pollution/mesures/stats/o3_stats.csv")
+```
+
+
+```{r, warning=FALSE, include=FALSE}
+conversion_donnees = function(data){
+  data <- select(data, X, indicateur)
+  data$X <- as.Date(data$X, format="%d/%m/%Y")
+  data$indicateur <- as.numeric(as.character(data$indicateur))
+  return (data)
+}
+
+selection_periode = function(data, debut, fin){
+  data <- filter(data, X >= as.POSIXct(debut), X <= as.POSIXct(fin))
+}
+```
+* **Matières particulaires**
+
+
+Les matières particulières sont un indicateur indirect courant de la pollution de l’air. Elles affectent plus de personnes que n’importe quel autre polluant. Les mesures de la qualité de l’air sont communiquées en teneur moyenne journalière de particules PM par mètre cube d’air.
+
+
+1. Matières particulaires grossières (PM10)  
+On dispose des mesures journalières à partir de l'année 2006.  
+**Valeurs recommandées par l'OMS :** 50 μg/m3 moyenne sur 24 heures.     
+
+```{r, include=FALSE}
+pm10 <- conversion_donnees(pm10)
+```
+```{r pm10, echo=FALSE}
+ggplot(pm10) + geom_point(mapping = aes(x = X, y = indicateur, color=indicateur>50)) + xlab("Date(jour)") + ylab("indicateur des PM10(μg/m3)")
+```
+
+
+2. Matières particulaires fines (PM2.5)  
+
+
+On dispose des mesures journalières à partir de l'année 2007.    
+**Valeurs recommandées par l'OMS :** 25 μg/m3 moyenne sur 24 heures.     
+
+```{r, include=FALSE}
+pm25 <- conversion_donnees(pm25)
+```
+```{r pm25, echo=FALSE}
+ggplot(pm25) + geom_point(mapping = aes(x = X, y = indicateur, color=indicateur>25)) + xlab("Date(jour)") + ylab("indicateur des PM2.5(μg/m3)")
+```
+
+
+* **Ozone (O3)**  
+
+
+L’ozone est l’un des principaux facteurs de risque de morbidité et de mortalité liées à l’asthme.  
+On dispose des mesures horraires à partir de l'année 2000.  
+**Valeurs recommandées par l'OMS :** 100 μg/m3 moyenne sur 8 heures.    
+
+```{r, include=FALSE}
+o3 <- conversion_donnees(o3)
+```
+```{r o3, echo=FALSE}
+ggplot(o3) + geom_point(mapping = aes(x = X, y = indicateur)) + xlab("Date(jour)") + ylab("indicateur du O3 (μg/m3)")
+```
+
+
+* **Dioxyde d’azote (NO2)**  
+
+
+Les émissions anthropiques de NO2 proviennent principalement de la combustion. C'est un gaz toxique entraînant une inflammation importante des voies respiratoires. Il est considéré comme le principal agent responsable de la formation des aérosols de nitrates, qui représentent une proportion importante des PM2.5 et d'ozone, en présence de rayons ultraviolets.  
+On dispose des mesures à partir de l'année 2000.  
+**Valeurs recommandées par l'OMS :** 40 μg/m3 moyenne annuelle.  
+
+```{r, include=FALSE}
+no2 <- conversion_donnees(no2)
+no2 <- mutate(no2, annee = as.numeric(format(no2$X, format = "%Y")))
+no2_moyenne_annuelle <- no2 %>% group_by(annee) %>% mutate(moyenne_annuelle = mean(indicateur,na.rm=TRUE)) %>% select(annee, moyenne_annuelle)
+```
+```{r no2, echo=FALSE}
+ggplot(no2_moyenne_annuelle) + geom_point(mapping = aes(x = annee, y = moyenne_annuelle, color=moyenne_annuelle>40)) + xlab("Date(année)") + ylab("indicateur du NO2(μg/m3)")
+```
+
+
+* **Dioxyde de soufre (SO2)**  
+
+
+Le SO2 est un gaz incolore, d'odeur piquante. Il affecte le système respiratoire, le fonctionnement des poumons et il provoque des irritations oculaires.  
+On disposes des mesures journalières à partir de l'année 2000.  
+**Valeurs recommandées par l'OMS :** 20 μg/m3 moyenne sur 24 heures.  
+
+
+* **Monoxyde  de  carbone (CO)**  
+
+
+Le monxyde de carbone est un des polluants de la qualité de l'air extérieur non cancérogène.  
+On disposes des mesures journalières à partir de l'année 2000.  
+**Valeurs recommandées par l'OMS :** 30 mg/m3 moyenne horraire.    

@@ -1,0 +1,213 @@
+---
+title: "Préparation des données de pollution atmosphérique et mortalité"
+author: "Hana Sebia"
+date: "07/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,warning=FALSE,include=FALSE}
+library(tidyverse)
+library(stringr)
+```
+
+**Chargement des données de pollution **
+
+```{r include=TRUE}
+polluants <- c("no","no2","o3","pm2,5","pm10")
+df_pollution <- list()
+
+init_df_pollution = function(df_pollution, polluants){
+  for (p in polluants){
+      df_pollution[[p]] <- read.csv2(str_c("../../data/pollution/mesures/stats/",p, "_stats.csv"))
+  }
+  return (df_pollution)
+}
+
+df_pollution <- init_df_pollution(df_pollution, polluants)
+```
+
+**Conversion des string date en le type DATE de R**
+
+```{r include=TRUE}
+conversion_date_indicateur= function(df_pollution, polluants){
+  for (p in polluants){
+    df_pollution[[p]] <- as.data.frame(df_pollution[[p]])
+    df_pollution[[p]] <- select(df_pollution[[p]], X, indicateur)
+    df_pollution[[p]]$X <- as.Date(df_pollution[[p]]$X, format="%d/%m/%Y")
+    df_pollution[[p]]$indicateur <- as.numeric(as.character(df_pollution[[p]]$indicateur))
+  }
+  return (df_pollution)
+}
+
+selection_periode = function(df_pollution, polluants, debut, fin){
+  for (p in polluants){
+    df_pollution[[p]] <- filter(df_pollution[[p]], X >= as.POSIXct(debut), X <= as.POSIXct(fin))
+  }
+  return (df_pollution)
+}
+
+df_pollution <- conversion_date_indicateur(df_pollution, polluants)
+```
+
+- Sélection des mesures de pollution entre les années 2007 et 2019 et les aggréger en données mensuelles 
+
+```{r, include=FALSE}
+df_pollution_2007_2019 <- selection_periode(df_pollution,polluants, "2007-01-01","2019-12-31")
+
+moyenne_mensuelle_pollution = function(polluants, df_pollution){
+  df_pollution_mens <- list()
+  for(p in polluants) {
+    df_pollution_mens[[p]] <- df_pollution_heb[[p]] %>% group_by(date = (format(X, "%Y-%m"))) %>% mutate(ind = mean(indicateur)) %>% slice(1)  %>%   arrange(date) %>% select(date, ind)
+  }
+  return(df_pollution_mens)
+}
+
+df_pollution_mens <- moyenne_mensuelle_pollution(polluants, df_pollution_2007_2019)
+```
+
+
+**Chargement des données de mortalité quotidiennes 2018-2019**
+
+```{r include=FALSE}
+
+init_df_mortalite = function(df_mortalite){
+  mortalite_2018 <- read.csv2("../../data/mortalite/journaliers_2018-2019/quotidienne/2018_quotidienne.csv")
+   mortalite_2019 <- read.csv2("../../data/mortalite/journaliers_2018-2019/quotidienne/2019_quotidienne.csv")
+   df_mortalite <- rbind.data.frame(mortalite_2018,mortalite_2019)
+   return (df_mortalite)
+}
+
+df_mortalite_2018_2019 <- init_df_mortalite(df_mortalite_2018_2019)
+```
+
+
+```{r, warning=FALSE, include=FALSE}
+conversion_date_nbDeces = function(data){
+  data$X <- as.Date(data$X, format="%Y-%m-%d")
+  data$nb_deces <- as.numeric(as.character(data$nb_deces))
+  return (data)
+}
+
+df_mortalite_2018_2019 <- conversion_date_nbDeces(df_mortalite_2018_2019)
+```
+
+```{r, include=FALSE}
+selection_date = function(data, debut, fin){
+  new_data <- filter(data, X >= as.POSIXct(debut), X <= as.POSIXct(fin))
+  return (new_data)
+}
+
+```
+
+- Transformer les données de mortalité (2018-2019) quotidiennes en mensuelles en cumulant le nombre de décès journalier 
+
+```{r}
+df_mortalite_2018_2019_mens <- df_mortalite_2018_2019 %>% group_by(date =(format(X, "%Y-%m"))) %>% mutate(nb_deces = sum(nb_deces)) %>% slice(1) %>% select(date, nb_deces)
+```
+
+- Charger les données de mortalité mensuelles entre 2007 et 2017
+
+```{r, include=FALSE}
+
+init_df_mortalite_mens = function(df_mortalite){
+  df_mortalite <- read.csv2("../../data/mortalite/mensuels_2007-2019/init/dec2007.csv")
+  mortalite <- list()
+  for(i in 2008:2017){
+    mortalite[[i]] <- read.csv2(str_c("../../data/mortalite/mensuels_2007-2019/init/dec",i, ".csv"))
+    colnames(mortalite[[i]]) <- c("ADEC","MDEC","DEPDEC","LIEUDECR","SEXE","ANAIS","DEPNAIS","ACTIV","INDNAT","DEPDOM","TUDOM","TUCOM","ETAMAT")
+    df_mortalite <- rbind(df_mortalite, mortalite[[i]])
+  }
+  
+
+   return (df_mortalite)
+}
+
+df_mortalite_mens <- init_df_mortalite_mens(df_mortalite_mens)
+
+```
+
+- Nettoyage des données de mortalité mensuelles et concaténation avec les données de 2018-2019
+
+```{r, include=FALSE}
+
+nettoyage_donnees_mortalite = function(mortalite){
+  
+  mortalite <- filter(mortalite, DEPDOM == 69) %>% select(ADEC, MDEC, DEPDOM)
+  mortalite$MDEC <- as.numeric(as.character(mortalite$MDEC))
+  mortalite <- mutate(mortalite, date=if_else(mortalite$MDEC < 10, str_c(ADEC, "-0",MDEC, "-01"), str_c(ADEC, "-",MDEC,"-01")))
+  mortalite$date <- as.Date(mortalite$date, format="%Y-%m-%d")
+  mortalite$DEPDOM <- as.numeric(as.character(mortalite$DEPDOM))
+  mortalite <- mutate(mortalite, nb_deces = 1)
+  mortalite <- mortalite %>% group_by(date=format(date, "%Y-%m")) %>% mutate(nb_deces = sum(nb_deces)) %>% slice(1) %>% select(date,nb_deces) %>% arrange(date)
+  
+  return (mortalite)
+  
+}
+
+df_mortalite_mens <- nettoyage_donnees_mortalite(df_mortalite_mens)
+df_mortalite_mens <- rbind.data.frame(df_mortalite_mens, df_mortalite_2018_2019_mens)
+```
+
+
+**Construction d'un dataframe contenant les données de pollution et de mortalité mensuelles (2007-2019)**
+
+```{r, include=FALSE, warning=FALSE}
+data_corr <- df_mortalite_mens
+for(p in polluants){
+  data_corr <- left_join(data_corr,df_pollution_mens[[p]], by="date")
+}
+
+colnames(data_corr) <- c("date","nb_deces","no","no2","o3","pm25","pm10") 
+```
+
+```{r}
+write.table(data_corr, "../../data/donnees_pollution_mortalite_mensuelles.csv", sep=";", col.names = TRUE, row.names = FALSE)
+```
+
+**Construction d'un dataframe contenant les données de pollution et de mortalité quotidiennes (2018-2019)**
+
+```{r}
+df_pollution_2018_2019 <- selection_periode(df_pollution,polluants, "2018-01-01","2019-12-31") 
+data_corr_quot <- df_mortalite_2018_2019
+for(p in polluants){
+  data_corr_quot <- left_join(data_corr_quot ,df_pollution_2018_2019[[p]], by="X")
+}
+colnames(data_corr_quot) <- c("date","nb_deces","no","no2","o3","pm25","pm10") 
+```
+
+```{r}
+write.table(data_corr_quot, "../../data/donnees_pollution_mortalite_quotidiennes.csv", sep = ";", col.names = TRUE, row.names = FALSE)
+```
+
+
+**Fonction de traitement**
+
+
+```{r, include=FALSE}
+seuil_cumul = function(polluant, df_mortalite, df_pollution, seuil, jours){
+  df_cumul <- list()
+  date_debut <- as.Date("2018-01-01", format="%Y-%m-%d")
+  date_fin <- as.Date("2019-12-31", format="%Y-%m-%d")
+
+  while (date_debut != (date_fin-jours)) {
+    if(df_pollution[[polluant]][(df_pollution[[polluant]]$X == date_debut),2] > seuil){
+      
+        mortalite <- selection_date(df_mortalite, date_debut-1, (date_debut+jours-1))
+        pollution <- selection_date(df_pollution[[polluant]], date_debut-1, (date_debut+jours-1))
+        
+        df_cumul[[polluant]]$date <- rbind(df_cumul[[polluant]]$date, date_debut)
+        df_cumul[[polluant]]$indicateur <- rbind(df_cumul[[polluant]]$indicateur, mean(pollution$indicateur))
+        df_cumul[[polluant]]$nb_deces <- rbind(df_cumul[[polluant]]$nb_deces ,mean(mortalite$nb_deces))
+      }
+    date_debut = date_debut + 1
+  }
+  return (df_cumul)
+}
+```
+
+
+

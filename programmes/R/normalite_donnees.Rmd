@@ -1,0 +1,242 @@
+---
+title: "Normalité des données"
+author: "Hana Sebia"
+date: "18/04/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+library(ggpubr)
+library(cowplot)
+library(rstatix)
+library(nortest)
+```
+```{r include=FALSE}
+pm10 <- read.csv2("../../data/pollution/mesures/stats/pm10_stats.csv")
+pm25 <- read.csv2("../../data/pollution/mesures/stats/pm2,5_stats.csv")
+no2 <- read.csv2("../../data/pollution/mesures/stats/no2_stats.csv")
+o3 <- read.csv2("../../data/pollution/mesures/stats/o3_stats.csv")
+no <- read.csv2("../../data/pollution/mesures/stats/no_stats.csv")
+```
+
+```{r, warning=FALSE, include=FALSE}
+conversion_donnees = function(data){
+  data <- select(data, X, indicateur)
+  data$X <- as.Date(data$X, format="%d/%m/%Y")
+  data$indicateur <- as.numeric(as.character(data$indicateur))
+  return (data)
+}
+
+selection_periode = function(data, debut, fin){
+  data <- filter(data, X >= as.POSIXct(debut), X <= as.POSIXct(fin))
+}
+```
+
+```{r include=FALSE}
+pm10 <- conversion_donnees(pm10)
+pm25 <- conversion_donnees(pm25)
+no2 <- conversion_donnees(no2)
+o3 <- conversion_donnees(o3)
+no <- conversion_donnees(no)
+```
+
+## Test de Normalité
+
+
+Afin de déterminer l'existence d'une liaison entre les données de pollution de l'air et les données d'admissions hospitalière en urgence on utilise des méthodes statistiques et des tests de corrélation qui supposent que les données suivent une distribution normale ou une distribution gaussienne. Ces tests sont appelés tests paramétriques, car leur validité dépend de la distribution des données.  
+La normalité et les autres hypothèses faites par ces tests doivent être prises au sérieux pour tirer une interprétation et des conclusions fiables de la recherche.  
+
+
+### Méthodes visuelles
+
+
+Les courbes de densité et le Q-Q plot peuvent être utilisées pour vérifier visuellement la normalité.  
+
+
+1. **Diagramme de densité : **permet de juger visuellement si la distribution est en forme de cloche.  
+2. **QQ plot (quantile-quantile plot) :**établit la corrélation entre un échantillion donné et la distribution normale. Une de référence de 45 degrés est également tracée. Chaque observation est tracée sous la forme d'un point unique. Si les données sont normales, les points doivent former une ligne droite.   
+
+
+
+* **Matières particulaires grossières (PM10)**  
+
+```{r, include=TRUE}
+plot_grid(ggdensity(pm10$indicateur, fill = "lightgray"), ggqqplot(pm10$indicateur))
+```
+
+
+* **Matières particulaires fines (PM2.5)**  
+```{r, include=TRUE}
+plot_grid(ggdensity(pm25$indicateur, fill = "lightgray"), ggqqplot(pm25$indicateur))
+```
+
+
+
+* **Ozone (O3)**  
+```{r, include=TRUE}
+plot_grid(ggdensity(o3$indicateur, fill = "lightgray"), ggqqplot(o3$indicateur))
+```
+
+
+* **Monoxyde d’azote (NO)**  
+```{r, include=TRUE}
+plot_grid(ggdensity(no$indicateur, fill = "lightgray"), ggqqplot(no$indicateur))
+```
+
+
+* **Dioxyde d’azote (NO2)**  
+```{r, include=TRUE}
+plot_grid(ggdensity(no2$indicateur, fill = "lightgray"), ggqqplot(no2$indicateur))
+```
+
+
+**Discussion**  
+L’inspection visuelle n’est pas fiable à 100%. Il est plus intéressant d’utiliser un test de significativité comparant la distribution de l’échantillon à une distribution normale afin de déterminer si les données montrent ou non un écart important par rapport à la distribution normale.
+
+
+
+### Approches probabilistes  
+
+
+Les tests abordés dans cette section se basent sur la notion d'hypothèse nulle et la p-value.  La p-value représente la probabilité de rejeter l'hypothèse nulle si elle est vraie.Plus la valeur de p est petite, plus la probabilité de faire une erreur en rejetant l'hypothèse nulle est faible. Une valeur limite de 0,05 est souvent utilisée. Autrement dit, On peut rejeter l'hypothèse nulle si la valeur de p est inférieure à 0,05.  
+*Hypothèse nulle :* l'échantillon suit une loi normale.  
+Par conséquent si la p-value du test est significative, l'échantillon ne suit pas une loi normale.  
+
+
+#### Test de Shapiro-Wilk
+
+
+Le test de Shapiro–Wilk teste l'hypothèse nulle selon laquelle un échantillon X1 , … , Xn est issu d'une population normalement distribuée.  
+La sortie de la fonction est la p-value et la statistique de test.  
+Une statistique de test est une variable aléatoire construite à partir d'un échantillon statistique permettant de formuler une règle de décision pour un test statistique. Pour conclure cette statistique est comparé à une table.
+
+
+
+* **Matières particulaires grossières (PM10)**  
+
+```{r, include=TRUE}
+pm10[0:5000,] %>% shapiro_test(indicateur)
+```
+
+
+* **Matières particulaires fines (PM2.5)**  
+```{r, include=TRUE}
+pm25[0:5000,] %>% shapiro_test(indicateur)
+```
+
+
+* **Ozone (O3)**  
+```{r, include=TRUE}
+o3[0:5000,] %>% shapiro_test(indicateur)
+```
+
+
+* **Monoxyde d’azote (NO)**  
+```{r, include=TRUE}
+no[0:5000,] %>% shapiro_test(indicateur)
+```
+
+
+* **Dioxyde d’azote (NO2)**  
+```{r, include=TRUE}
+no2[0:5000,] %>% shapiro_test(indicateur)
+```
+
+
+
+#### Test d'Anderson-Darling
+
+
+Le test d'Anderson-Darling est un test de normalité qui permet de détecter l'écart par rapport à la normalité des valeurs maximales et minimales d'une distribution.   
+La sortie de la fonction est la p-value et la statistique de test.  
+
+
+* **Matières particulaires grossières (PM10)**  
+
+```{r, include=TRUE}
+ad.test(pm10$indicateur)
+```
+
+
+* **Matières particulaires fines (PM2.5)**  
+```{r, include=TRUE}
+ad.test(pm25$indicateur)
+```
+
+
+* **Ozone (O3)**  
+```{r, include=TRUE}
+ad.test(o3$indicateur)
+```
+
+
+* **Monoxyde d’azote (NO)**  
+```{r, include=TRUE}
+ad.test(no$indicateur)
+```
+
+
+* **Dioxyde d’azote (NO2)**  
+```{r, include=TRUE}
+ad.test(no2$indicateur)
+```
+
+
+
+
+#### Test de Lilliefors
+
+
+le test de Lilliefors est un test de normalité permettant de tester l'hypothèse nulle que les données soient issues d'une loi normale quand les paramètres de la loi normale ne sont pas connus, c'est-à-dire quand ni l'espérance μ ni l'écart type σ ne sont connus.    
+La sortie de la fonction est la p-value et la statistique de test.  
+
+
+
+* **Matières particulaires grossières (PM10)**  
+
+```{r, include=TRUE}
+lillie.test(pm10$indicateur)
+```
+
+
+* **Matières particulaires fines (PM2.5)**  
+```{r, include=TRUE}
+lillie.test(pm25$indicateur)
+```
+
+
+* **Ozone (O3)**  
+```{r, include=TRUE}
+lillie.test(o3$indicateur)
+```
+
+
+* **Monoxyde d’azote (NO)**  
+```{r, include=TRUE}
+lillie.test(no$indicateur)
+```
+
+
+* **Dioxyde d’azote (NO2)**  
+```{r, include=TRUE}
+lillie.test(no2$indicateur)
+```
+
+
+
+
+**Discussion**  
+On remarque que les p-values calculées pour les différents polluants pour les trois tests probabilistes (*Shapiro-Wilk* , *Anderson-Darling*,  *Lilliefors*) sont significatives (car < 0.05). On peut donc conclure que les échantillions de données ne suivent pas une loi normale.
+
+
+
+**Conclusion**  
+La non-normalité des données de pollution ne nous permet pas d'appliquer les tests paramétriques. Sans cette hypothèse, les tests paramétriques, bien qu'ils soient puissants, ne nous permettent pas de tirer des conclusions valides et fiable pour la suite du projet. On a fait alors le choix de se tourner vers les tests non paramétriques.
+
